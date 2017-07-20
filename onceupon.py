@@ -11,7 +11,7 @@ import queries
 
 
 app = f.Flask(__name__)
-db = None
+dbargs = None
 
 
 def isoify_dates(data):
@@ -26,7 +26,11 @@ def events_by_date():
     if f.request.method == 'POST':
         from_date = dateparse(f.request.json['from'])
         to_date = dateparse(f.request.json['to'])
+
+        db = dbargs.connect() # keep-alive, what's that?
         data = list(queries.events_date_range(db, from_date, to_date))
+        db.db.close()
+
         isoify_dates(data)
         return f.jsonify(data)
     else:
@@ -40,13 +44,16 @@ def events_by_id_info():
 
 @app.route("/events/afterid/<int:first_id>", methods=['GET'])
 def events_by_id(first_id):
+    db = dbargs.connect() # keep-alive, what's that?
     data = list(queries.events_after_id(db, first_id))
+    db.db.close()
+
     isoify_dates(data)
     return f.jsonify(data)
 
 
 def main(argv=None):
-    global db
+    global dbargs
 
     if argv is None:
         argv = sys.argv
@@ -63,7 +70,7 @@ def main(argv=None):
     args = parser.parse_args(argv[1:])
     mysqlargs.extract(args)
 
-    db = mysqlargs.connect()
+    dbargs = mysqlargs
 
     app.run()
 
